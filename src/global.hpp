@@ -9,6 +9,7 @@ void install(const std::string& path);
 void start();
 void stop();
 void rerun_attempt(int id);
+void rerun_contest(int id);
 
 void shutdown();
 

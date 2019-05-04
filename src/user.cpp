@@ -21,9 +21,70 @@ int login(const string& username, const string& password) {
   return user(0,"id");
 }
 
+bool change_password(const int id, const std::string& oldpassword, const std::string& newpassword){
+  DB(users);
+
+  JSON user;
+  users.retrieve(id, user);
+  
+  if(user["password"] != oldpassword) return false;
+
+  user["password"] = newpassword;
+  users.update(id, user);
+
+  return true;
+}
+
+
 JSON get(int id) {
   DB(users);
   return users.retrieve(id);
+}
+
+JSON isadmin(int user){
+    if(!user || get(user)["turma"] != "Z") return JSON(false);
+    return JSON(true);
+}
+
+JSON get_turmas(int user){
+    JSON ans(vector<JSON>{});
+
+    if(!user) return ans;
+    if(get(user)["turma"] != "Z") return ans;
+
+    DB(users);
+
+    JSON us = users.retrieve();
+
+    set<string> turmas;
+    JSON tmp;
+    for(JSON u : us.arr()){
+        string s = u["turma"];
+        turmas.insert(s);
+    }
+
+    for(const string& t : turmas){
+        tmp["name"] = t;
+        ans.push_back(tmp);
+    }
+    return ans;
+}
+
+JSON get_of_turma(int user, const string& turma){
+    JSON ans(vector<JSON>{});
+
+    if(!user || get(user)["turma"] != "Z") return ans;
+
+    DB(users);
+
+    JSON us = users.retrieve();
+    for(JSON u : us.arr()) if(turma == u["turma"]) {
+        u.erase("password");
+        u.erase("turma");
+        u.erase("username");
+        ans.push_back(u);
+    }
+    return ans;
 }
 
 string name(int id) {

@@ -64,19 +64,49 @@ struct Coll {
     pthread_mutex_unlock(&mutex);
     return ans;
   }
-  JSON retrieve_page(unsigned p, unsigned ps) {
-    JSON ans(vector<JSON>{});
+  // JSON retrieve(const Database::Transformation& tr) {
+  //   JSON ans(vector<JSON>{});
+  //   pthread_mutex_lock(&mutex);
+  //   // cmap<int,JSON> documents2(documents);
+  //   for (auto& kv : documents) {
+  //     Database::Document tmp = move(tr(kv));
+  //     if (tmp.first) ans.push_back(move(tmp));
+  //   }
+  //   pthread_mutex_unlock(&mutex);
+  //   return ans;
+  // }
+  // JSON retrieve_page(unsigned p, unsigned ps, int t) {
+  //   JSON ans(vector<JSON>{});
+  //   pthread_mutex_lock(&mutex);
+  //   if (!ps) p = 0, ps = documents.size();
+  //   auto it = documents.at(p*ps);
+  //   for (int i = 0; i < ps && it != documents.end(); i++, it++) {
+  //     JSON tmp = it->second;
+  //     tmp["id"] = it->first;
+  //     ans.push_back(move(tmp));
+  //   }
+  //   pthread_mutex_unlock(&mutex);
+  //   return ans;
+  // }
+
+  JSON retrieve_page(
+    unsigned p,
+    unsigned ps,
+    const Database::Transformation& tr
+  ) {
     pthread_mutex_lock(&mutex);
-    if (!ps) p = 0, ps = documents.size();
-    auto it = documents.at(p*ps);
-    for (int i = 0; i < ps && it != documents.end(); i++, it++) {
-      JSON tmp = it->second;
-      tmp["id"] = it->first;
-      ans.push_back(move(tmp));
-    }
+    cmap<int,JSON> documents2(documents);
     pthread_mutex_unlock(&mutex);
+    JSON ans(vector<JSON>{});
+    if (!ps) p = 0, ps = documents2.size();
+    auto it = documents2.at(p*ps);
+    for (int i = 0; i < ps && it != documents2.end(); i++, it++) {
+      Database::Document tmp = move(tr(*it));
+      if (tmp.first) ans.push_back(move(tmp));
+    }
     return ans;
   }
+
   bool update(int id, JSON&& doc) {
     pthread_mutex_lock(&mutex);
     auto it = documents.find(id);
@@ -194,8 +224,8 @@ JSON Collection::retrieve(const JSON& filter) {
   return collection[collid].retrieve(filter);
 }
 
-JSON Collection::retrieve_page(unsigned page,unsigned page_size) {
-  return collection[collid].retrieve_page(page,page_size);
+JSON Collection::retrieve_page(unsigned page,unsigned page_size, const Database::Transformation& tr) {
+  return collection[collid].retrieve_page(page,page_size, tr);
 }
 
 bool Collection::update(int docid, const JSON& document) {

@@ -1,0 +1,139 @@
+<meta charset="UTF-8">
+<style>
+
+table {
+  border-collapse: collapse;
+  font-family: 'Courier New', Courier, mono;
+}
+
+table th, table td {
+  border: 2px solid black;
+  padding: 2px 20px;
+  text-align: center;
+}
+
+</style>
+<script src="jquery.min.js"></script>
+<script>
+  $(document).ready(function() {
+    $.get("notas",null,function(resp) {
+      var html = "";
+      if(resp.length != 2) return;
+      var ansl = resp[0];
+      var ansp = resp[1];
+      if(ansl.length != ansp.length) return;
+      
+      for(var turma in ansp){
+        if(turma.length > 1) continue;
+        if(turma > 'P') continue;
+        html += "<br/>";
+        html +=
+          "<b>Turma "+turma+"</b>"+
+          "<table>"+
+            "<tr>"+
+              "<th>Matrícula</th>"
+        ;
+        var first = true;
+        var medial = {}, mediap = {};
+        for(user in ansl[turma]){
+          if(first){
+            for(var cid in ansl[turma][user]){
+              html +=
+                "<th>"+ansl[turma][user][cid].name+"</th>"
+              ;
+            }
+            for(var cid in ansp[turma][user]){
+              html +=
+                "<th>"+ansp[turma][user][cid].name+"</th>"
+              ;
+            }
+
+            html +=
+              "</tr>"
+            ;
+            first = false;
+          }
+
+          html +=
+            "<tr>"+
+              "<td>"+user+"</td>"
+          ;
+
+          for(var cid in ansl[turma][user]){
+            var num = ansl[turma][user][cid].num;
+            var den = ansl[turma][user][cid].den;
+            if(den == 0) num = 0, den = 1;
+            var grade = 10 * num / den;
+            if(cid in medial){
+                medial[cid].num = medial[cid].num * den + medial[cid].den * num;
+                medial[cid].den = medial[cid].den * den;
+                medial[cid].qnt++;
+            }
+            else{
+                medial[cid] = {};
+                medial[cid].num = num;
+                medial[cid].den = den;
+                medial[cid].qnt = 1;
+            }
+            html +=
+              "<td>"+Math.round(grade*100)/100+"</td>"
+            ;
+          }
+          for(var cid in ansp[turma][user]){
+            var num = ansp[turma][user][cid].num;
+            var den = ansp[turma][user][cid].den;
+            if(den == 0) num = 0, den = 1;
+            if(cid in mediap){
+                mediap[cid].num = mediap[cid].num * den + mediap[cid].den * num;
+                mediap[cid].den = mediap[cid].den * den;
+                mediap[cid].qnt++;
+            }
+            else{
+                mediap[cid] = {};
+                mediap[cid].num = num;
+                mediap[cid].den = den;
+                mediap[cid].qnt = 1;
+            }
+            var grade = 10 * num / den;
+            html +=
+              "<td>"+Math.round(grade*100)/100+"</td>"
+            ;
+          }
+
+          html +=
+            "</tr>"
+          ;
+        }
+        html +=
+          "<tr> <td> <b>Médias</b> </td>"
+        ;
+        
+        for(var cid in medial){
+          console.log(medial[cid]);
+          var num = medial[cid].num;
+          var den = medial[cid].den;
+          var grade = 10 * num / den / medial[cid].qnt;
+          html +=
+              "<td><b>"+Math.round(grade*100)/100+"</b></td>"
+          ;
+        }
+
+        for(var cid in mediap){
+            console.log(mediap[cid]);
+            var num = mediap[cid].num;
+            var den = mediap[cid].den;
+            var grade = 10 * num / den / mediap[cid].qnt;
+            html +=
+              "<td><b>"+Math.round(grade*100)/100+"</b></td>"
+            ;
+        }
+        html +=
+          "</tr>"+
+          "</table>"
+        ;
+      }
+      $("#content").html(html);
+    });
+  });
+</script>
+<div id = "content">Carregando, por favor aguarde...</div>

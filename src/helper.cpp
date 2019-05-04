@@ -28,6 +28,10 @@ string verdict_tos(int verd) {
   return "";
 }
 
+long long gcd(long long a, long long b){
+  return b ? gcd(b, a % b) : a;
+}
+
 string getcwd() {
   char* tmp = get_current_dir_name();
   string ans = tmp;

@@ -74,13 +74,36 @@ route("/status",[=](const vector<string>&) {
 });
 
 route("/contests",[=](const vector<string>& args) {
-  if (args.size() < 2) { json(Contest::page()); return; }
+  if (args.size() < 2) { json(Contest::page(uid())); return; }
   unsigned page, page_size;
   if (!read(args[0],page) || !read(args[1],page_size)) {
-    json(Contest::page());
+    json(Contest::page(uid()));
     return;
   }
-  json(Contest::page(page,page_size));
+  json(Contest::page(uid(), page,page_size));
+});
+
+route("/contests/get_all",[=](const vector<string>& args) {
+  json(Contest::get_all(uid()));
+});
+
+route("/get_all_turmas",[=](const vector<string>&args){
+  json(User::get_turmas(uid()));
+});
+
+route("/get_users_of_turma",[=](const vector<string>& args){
+  if(args.size() != 1) return;
+  string turma;
+  if(!read(args[0], turma)) return;
+  json(User::get_of_turma(uid(), turma));
+});
+
+route("/attempt_user_contest",[=](const vector<string>&args){
+  if(args.size() != 2) return;
+  int user, contest;
+  if(!read(args[0], user) || !read(args[1], contest)) return;
+
+  json(Attempt::get_user_contest(uid(), user, contest));
 });
 
 route("/problems",[=](const vector<string>& args) {
@@ -113,6 +136,10 @@ route("/users",[=](const vector<string>& args) {
   json(User::page(uid(),page,page_size));
 });
 
+route("/notas",[=](const vector<string>& args) {
+  json(Contest::notas());
+});
+
 route("/logout",[=](const vector<string>&) {
   session(nullptr);
   location("/");
@@ -137,9 +164,9 @@ route("/contest/attempts",[=](const vector<string>& args) {
 },false,false,1);
 
 route("/contest/scoreboard",[=](const vector<string>& args) {
-  int cid;
-  if (!read(args[0],cid)) { not_found(); return; }
-  json(Contest::scoreboard(cid,uid()));
+   int cid;
+   if (!read(args[0],cid)) { not_found(); return; }
+   json(Contest::scoreboard(cid,uid()));
 },false,false,1);
 
 route("/problem",[=](const vector<string>& args) {
@@ -173,6 +200,17 @@ route("/user",[=](const vector<string>& args) {
   json(User::profile(id,uid(),page,page_size));
 },false,false,1);
 
+route("/getcases",[=](const vector<string>& args){
+  int att;
+  if (!read(args[0], att)) { not_found(); return; }
+  json(Attempt::getcases(uid(), att));
+}, true, false, 1);
+
+route("/isadmin",[=](const vector<string>& args){
+  if(args.size()){ json(false); return; }
+  json(User::isadmin(uid()));
+});
+
 // =============================================================================
 // POST
 // =============================================================================
@@ -195,6 +233,26 @@ route("/login",[=](const vector<string>&) {
   session(new Session(ip(),uid));
   response("ok");
 },false,true);
+
+route("/change_pass",[=](const vector<string>&args){
+  if (!session()) { location("/"); return; }
+  auto& data = payload();
+  data.push_back(0);
+  JSON json;
+  json.parse(&data[0]);
+  if (!json("oldpass") || !json("newpass")) {
+    response("Please fill in all fields!");
+    return;
+  }
+
+  if(User::change_password(uid(), json["oldpass"], json["newpass"])){
+    response("ok");
+  }
+  else{
+    response("Invalid password");
+  }
+
+}, true, true);
 
 route("/new_attempt",[=](const vector<string>& args) {
   int probid;

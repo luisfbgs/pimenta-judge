@@ -29,13 +29,36 @@ function init() {
       if (username == "") html +=
         "<li><a href=\"login.html\">Login</a></li>"
       ;
-      else html +=
-        "<li><a href=\"logout\">Logout</a></li>"
-      ;
+      else{
+        html +=
+          "<li><a href=\"#\" onclick=\"change_pass()\">Change Password</a></li>\n"
+        ;
+        if(isadmin()){
+          html +=
+            "<li><a href=\"#\" onclick=\"tests()\">Admin quick</a></li>\n"+
+            "<li><a href=\"#\" onclick=\"tests_complete()\">Admin</a></li>\n"
+          ;
+        }
+        html +=
+          "<li><a href=\"logout\">Logout</a></li>"
+        ;
+      }
       $(".menu").html(html);
     },
     async: false
   });
+}
+
+function isadmin(){
+    var ret = false;
+    $.ajax({
+        url: "isadmin",
+        success: function(resp){
+            ret = resp;
+        },
+        async: false
+    });
+    return ret;
 }
 
 function login() {
@@ -46,7 +69,8 @@ function contests() {
   $.get("attempts",null,function(atts) {
     setup_solved(atts);
     $.get("contests",null,function(resp) {
-      for (var i = 0; i < resp.length; i++) {
+      
+      for (var i = 0; i < resp.length; i++){
         var obj = resp[i];
         var s = obj.start;
         var tmp = new Date(s.year,s.month-1,s.day,s.hour,s.minute,0,0);
@@ -105,6 +129,130 @@ function problems() {
   });
 }
 
+function change_pass(){
+  var str = "";
+
+  str +=
+        "<h4 id=\"response\"></h4>"+
+        "<table>" +
+          "<tr>"+
+            "<td>Old password:</td>\n"+
+            "<td><input id=\"oldpassword\" type=\"password\"></td>\n"+
+          "<tr>"+
+            "<td>New password:</td>\n"+
+            "<td><input id=\"newpassword\" type=\"password\"></td>\n"+
+          "</tr>"+
+          "<tr>"+
+            "<td></td>"+
+            "<td><button onclick=\"do_change_pass()\">Send</button></td>";
+          "</tr>"+
+        "</table>"+
+
+  $("#c1").html(str);
+}
+
+function tests(){
+  var str = "";
+
+  str +=
+        "<h4 id=\"response\"></h4>"+
+        "<table>" +
+          "<tr>"+
+            "<td><input id=\"attid\" type=\"text\"></td>\n"+
+          "</tr>"+
+          "<tr>"+
+            "<td><button onclick=\"quick_attempt_cases()\">Send</button></td>";
+          "</tr>"+
+        "</table>"+
+
+  $("#c1").html(str);
+}
+
+function tests_complete(){
+
+  $.get("contests/get_all/", null, function(cont){
+    if(!Array.isArray(cont)) return;
+
+    $.get("get_all_turmas/", null, function(turmas){
+      if(!Array.isArray(turmas)) return;
+
+      var str = "";
+      str += "<h4 id=\"response\"></h4>"+
+             "<table>"+
+             "<tr>"+
+             "<td>Contest</td>"+
+             "<td>Turma</td>"+
+             "<td>Aluno</td>"+
+             "<td></td>"+
+             "</tr>"+
+             "<tr>"+
+             "<td>"+
+             "<select id=dropdown_contests>";
+      for(var i in cont){
+        str += "<option value="+cont[i].id+">"+cont[i].name+"</option>";
+      }
+      str += "</select>"+
+             "</td>"+
+             "<td>"+
+             "<select id=dropdown_turmas onchange=set_alunos()>"+
+             "<option value=> </option>";
+      for(var i in turmas){
+        str += "<option value="+turmas[i].name+">"+turmas[i].name+"</option>";
+      }
+      str += "</select>"+
+             "</td>"+
+             "<td>"+
+             "<select id=dropdown_alunos>"+
+             "</select>"+
+             "</td>"+
+             "<td> <button onclick=\"get_attempts_of_aluno()\">Get</button> </td>"+
+             "</tr>"+
+             "</table>"+
+             "<div id=\"c2\"></div>"+
+             "<div id=\"c3\"></div>";
+
+      $("#c1").html(str);
+    });
+  });
+}
+
+function get_attempts_of_aluno(){
+    var user = $("#dropdown_alunos").val();
+    var contest = $("#dropdown_contests").val();
+
+    $.get("/attempt_user_contest/"+user+"/"+contest, null, function(atts){
+        if(!Array.isArray(atts)) return;
+
+        var str = "";
+
+        for(var i in atts)
+          str +=
+            "<button onclick=\"attempt_cases("+atts[i].id+")\">"+atts[i].id+"</button>"
+          ;
+
+        $("#c2").html(str);
+    });
+}
+
+function set_alunos(){
+    var turma = $("#dropdown_turmas").val();
+
+    if(!turma){
+        $("#dropdown_alunos").html("");
+        return;
+    }
+
+    $.get("get_users_of_turma/"+turma, null, function(alunos){
+      if(!Array.isArray(alunos)) return;
+      var str = "";
+      
+      for(var i in alunos)
+        str += "<option value="+alunos[i].id+">"+alunos[i].name+"</option>";
+
+      $("#dropdown_alunos").html(str);
+    });
+}
+
 function attempts() {
   if (username == "") { login(); return; }
   $.get("attempts",null,function(resp) {
@@ -155,8 +303,10 @@ function contest(id) {
     if (username != "") html +=
         "<a href=\"#\" onclick=\"contest_attempts("+id+")\">Attempts</a> "
     ;
+	if (username == "placar" || username == "judge")
     html +=
-        "<a href=\"#\" onclick=\"contest_scoreboard("+id+")\">Scoreboard</a>"+
+        "<a href=\"#\" onclick=\"contest_scoreboard("+id+")\">Scoreboard</a>"
+	html +=
       "</div>"+
       "<div id=\"c2\"></div>"
     ;
@@ -200,7 +350,7 @@ function contest_attempts(id) {
     $(content()).html("<h2>Attempts</h2><div id=\"pages\"></div>");
     render_pages("#pages",[
       {name: "#", field: function(obj) {
-        return "<a href=\"#\" onclick=\"attempt("+obj.id+")\">"+obj.id+"</a>";
+        return "<a href=\"#\" onclick=\"attempt_cases("+obj.id+")\">"+obj.id+"</a>";
       }},
       {name: "Problem", field: function(obj) {
         var ans = "<a href=\"#\" onclick=\"problem(";
@@ -218,59 +368,62 @@ function contest_attempts(id) {
 }
 
 function contest_scoreboard(id) {
-  $.get("contest/scoreboard/"+id,null,function(resp) {
-    var msg = (
-      resp.status == "frozen" ? " (frozen at "+resp.freeze+" minutes)" : (
-        resp.status == "final" ? " (final)" : ""
-      )
-    );
-    var n = resp.colors.length;
-    var sc = compute_scoreboard(n,resp.attempts);
-    var html =
-      "<h2>Scoreboard"+msg+"</h2>"+
-      "<table class=\"data\">"+
-        "<tr>"+
-          "<th>#</th>"+
-          "<th>Name</th>"
-    ;
-    for (var i = 0; i < n; i++) {
-      html +=
-          "<th>"+String.fromCharCode(i+65)+"</th>"
-      ;
-    }
-    html +=
-          "<th>Score</th>"+
-        "</tr>"
-    ;
-    for (var i = 0; i < sc.length; i++) {
-      html +=
-        "<tr>"+
-          "<td>"+(i+1)+"</td>"+
-          "<td>"+sc[i].name+"</td>"
-      ;
-      for (var j = 0; j < n; j++) {
-        var p = sc[i].problems[j];
-        var tmp = (
-          p.atts > 0 ? balloon(resp.colors[j])+p.atts+"/"+p.time : (
-            p.atts < 0 ? (-p.atts)+"/-" : ""
-          )
-        );
-        html +=
-          "<td class=\"scoreboard-problem\">"+tmp+"</td>"
-        ;
-      }
-      html +=
-          "<td>"+sc[i].score.num+" ("+sc[i].score.time+")</td>"
-      ;
-    }
-    $(content()).html(html);
-    $(".scoreboard-problem").css("padding", "2px");
-    render_balloons();
-  });
+	if (username == "placar" || username == "judge"){
+	  $.get("contest/scoreboard/"+id,null,function(resp) {
+		var msg = (
+		  resp.status == "frozen" ? " (frozen at "+resp.freeze+" minutes)" : (
+			resp.status == "final" ? " (final)" : ""
+		  )
+		);
+		var n = resp.colors.length;
+		var sc = compute_scoreboard(n,resp.attempts);
+		var html =
+		  "<h2>Scoreboard"+msg+"</h2>"+
+		  "<table class=\"data\">"+
+			"<tr>"+
+			  "<th>#</th>"+
+			  "<th>Name</th>"
+		;
+		for (var i = 0; i < n; i++) {
+		  html +=
+			  "<th>"+String.fromCharCode(i+65)+"</th>"
+		  ;
+		}
+		html +=
+			  "<th>Score</th>"+
+			"</tr>"
+		;
+		for (var i = 0; i < sc.length; i++) {
+		  html +=
+			"<tr>"+
+			  "<td>"+(i+1)+"</td>"+
+			  "<td>"+sc[i].name+"</td>"
+		  ;
+		  for (var j = 0; j < n; j++) {
+			var p = sc[i].problems[j];
+			var tmp = (
+			  p.atts > 0 ? balloon(resp.colors[j])+p.atts+"/"+p.time : (
+				p.atts < 0 ? (-p.atts)+"/-" : ""
+			  )
+			);
+			html +=
+			  "<td class=\"scoreboard-problem\">"+tmp+"</td>"
+			;
+		  }
+		  html +=
+			  "<td>"+sc[i].score.num+" ("+sc[i].score.time+")</td>"
+		  ;
+		}
+		$(content()).html(html);
+		$(".scoreboard-problem").css("padding", "2px");
+		render_balloons();
+	  });
+	}
 }
 
 function problem(id) {
   $.get("problem/"+id,null,function(resp) {
+    if(!resp) return;
     var languages = resp.languages;
     var limits_table =
       "<table class=\"data\">"+
@@ -352,7 +505,7 @@ function attempt(id) {
         "<tr>"+
           "<th>Problem</th>"+
           "<td>"+
-            "<a href=\"#\" onclick=\"problem("+resp.problem.id+")\">"+
+            "<a href=\"#\">"+
               resp.problem.id+" — "+resp.problem.name+
             "</a>"+
           "</td>"+
@@ -387,6 +540,80 @@ function attempt(id) {
     $.get("contest/"+resp.contest,null,function(resp2) {
       func(resp,resp2.name);
     });
+  });
+}
+
+function quick_attempt_cases(){
+    var id = $("#attid");
+    if(id != "")
+        attempt_cases(id.val());
+}
+
+function attempt_cases(id) {
+  if (username == "") window.location = "/";
+  if (id == "") return;
+  
+  var func = function(resp) {
+    if(resp == null) return;
+    if(typeof resp != "object") return;
+    if(resp["problem"] == undefined) return;
+    if(resp["tests"] == undefined) return;
+    var html =
+      "<h2>Attempt "+resp.id+"</h2>"+
+      "<table class=\"data\">"+
+        "<tr>"+
+          "<th>Problem</th>"+
+          "<td>"+
+            "<a href=\"#\" onclick=\"problem("+resp.problem.id+")\">"+
+              resp.problem.id+" — "+resp.problem.name+
+            "</a>"+
+          "</td>"+
+        "</tr>"+
+        "<tr><th>When</th><td>"+timestamp(resp.when)+"</td></tr>"+
+        "<tr><th>Language</th><td>"+resp.language+"</td></tr>"+
+        "<tr><th>Verdict</th><td>"+verdict(resp)+"</td></tr>"
+    ;
+    html +=
+      "</table>"
+    ;
+    var did = 0;
+    for(var test in resp.tests){
+      did = 1;
+      html+=
+        "<table class=\"data\">"+
+        "<tr>"+
+          "<th>input</th>"+
+          "<td>"+ resp.tests[test].input.replace(/\r?\n/g,"<br>") + "</td>"+
+        "</tr>"+
+        "<tr>"+
+          "<th>Output do programa</th>"+
+          "<td>"+ resp.tests[test].outrecieved.replace(/\r?\n/g,"<br>") + "</td>"+
+        "</tr>"+
+        "<tr>"+
+          "<th>Output esperado</th>"+
+          "<td>"+ resp.tests[test].outexpected.replace(/\r?\n/g,"<br>")  + "</td>"+
+        "</tr>"
+      ;
+    }
+    if(did != 0){
+      html +=
+        "</table>"
+      ;
+    }
+    var tmp = $(content()).html(html);
+
+    if (resp.source == "") return;
+    tmp.append($(
+      "<pre id=\"code\" class=\"prettyprint linenums\">"+
+      "</pre>"
+    ))
+    .find("#code").text(resp.source);
+    PR.prettyPrint();
+  };
+
+  $.get("getcases/"+id, null, function(resp){
+    func(resp);
+    return;
   });
 }
 
@@ -452,6 +679,7 @@ function new_attempt(probid) {
   var xhr = Ajax();
   xhr.onreadystatechange = function() {
     if (xhr.readyState == 4 && xhr.status == 200) {
+      alert(xhr.responseText);
       $("#response").html(xhr.responseText);
     }
   };
@@ -463,12 +691,52 @@ function new_attempt(probid) {
   code.val("");
 }
 
+function do_change_pass(){
+  $("#response").html("");
+  if(username == ""){ login(); return; }
+  
+  var oldpass = $("#oldpassword");
+  var newpass = $("#newpassword");
+
+  if(oldpass.val() == "" || newpass.val() == ""
+  || oldpass.val() == undefined || newpass.val() == undefined){
+    $("#response").html("Please fill in all fields!");
+    return;
+  }
+
+  if(newpass.val().length > 40){
+    $("#response").html("New password is too long! The maximum length is 40.");
+    return;
+  }
+
+  if(!/^[A-Za-z0-9!@#_%$^&*]+$/.test(newpass.val())){
+    $("#response").html("New password has some not allowed characters.<br>\n"+
+                        "Allowed characters are alphanumerics and !@#_%$^&*");
+    return;
+  }
+
+  $.post("change_pass", JSON.stringify({
+    oldpass: oldpass.val(),
+    newpass: newpass.val()
+  }), function(resp){
+    if(resp == "ok") window.location = "/";
+    else $("#response").html(resp);
+    // alert(resp);
+  });
+
+  oldpass.val("");
+  newpass.val("");
+}
+
+
 // =============================================================================
 // generic
 // =============================================================================
 
 function content() {
-  var ans = $("#c2");
+  var ans = $("#c3");
+  if (ans.length > 0) return "#c3";
+  ans = $("#c2");
   if (ans.length > 0) return "#c2";
   return "#c1";
 }
@@ -571,17 +839,25 @@ function balloon(color) {
 }
 function verdict(att) {
   if (att.status != "judged") att.verdict = att.status;
+
+  var percetage = "";
+
+  if("solved_tests" in att && "total_tests" in att){
+    if(att.total_tests > 0)
+      percetage = " (on test " + att.total_tests + ")" ;
+  }
+
   switch (att.verdict) {
-    case        "AC": return "Accepted";
-    case        "CE": return "Compile Error";
-    case       "RTE": return "Runtime Error";
-    case       "TLE": return "Time Limit Exceeded";
-    case       "MLE": return "Memory Limit Exceeded";
-    case        "WA": return "Wrong Answer";
-    case        "PE": return "Presentation Error";
-    case   "waiting": return "Not Answered Yet";
-    case     "blind": return "Blind Attempt";
-    case "cantjudge": return "Not Answered Yet";
+    case        "AC": return "Accepted" + percetage;
+    case        "CE": return "Compile Error" + percetage;
+    case       "RTE": return "Runtime Error" + percetage;
+    case       "TLE": return "Time Limit Exceeded" + percetage;
+    case       "MLE": return "Memory Limit Exceeded" + percetage;
+    case        "WA": return "Wrong Answer" + percetage;
+    case        "PE": return "Presentation Error" + percetage;
+    case   "waiting": return "Not Answered Yet" + percetage;
+    case     "blind": return "Blind Attempt" + percetage;
+    case "cantjudge": return "Not Answered Yet" + percetage;
     case     "first": return balloon(att.problem.color);
   }
   return "";

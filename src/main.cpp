@@ -25,10 +25,8 @@ static void usage() {
     "  stop\n"
     "  restart (precisely a stop followed by a start)\n"
     "  rerun-att <attempt id>\n"
-    "  rerun-probs <list of problem id ranges> (* reruns ALL attempts)\n"
-    "    Example to rerun problems 1, 3, 4, 5 and 6:\n"
-    "    %s rerun-probs 1 3-6\n",
-    exe,exe
+    "  rerun-contest <contest id> (* reruns ALL attempts)\n",
+    exe
   );
   exit(0);
 }
@@ -52,6 +50,11 @@ int main(int argc, char** argv) {
     int id;
     if (sscanf(args[0].c_str(),"%d",&id) != 1) usage();
     Global::rerun_attempt(id);
+  };
+  funcs["rerun-contest"][1] = [](const vector<string>& args) {
+    int id;
+    if (sscanf(args[0].c_str(),"%d",&id) != 1) usage();
+    Global::rerun_contest(id);
   };
   exe = argv[0];
   if (argc <= 1) usage();

@@ -2,10 +2,11 @@
 #include <sys/stat.h>
 
 #include "problem.hpp"
-
+#include <iostream>
 #include "helper.hpp"
 #include "contest.hpp"
 #include "language.hpp"
+#include "user.hpp"
 
 using namespace std;
 
@@ -56,7 +57,7 @@ JSON page(int user, unsigned p, unsigned ps) {
     int cid;
     if (p("contest").read(cid)) {
       aux = Contest::get(cid,user);
-      if (!aux || !aux("finished")) continue;
+     if ((!aux || !aux("finished")) /*&& User::get(user)["turma"] != "Z"*/) continue;  
     }
     p.erase("languages");
     ans.push_back(move(p));

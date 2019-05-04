@@ -7,6 +7,8 @@
 #include <sys/stat.h>
 #include <sys/resource.h>
 
+#include <fstream>
+#include <algorithm>
 #include "judge.hpp"
 
 #include "database.hpp"
@@ -68,7 +70,7 @@ static char run(const string& cmd, int tls, int mlkB, int& mtms, int& mmkB) {
   mtms = us/1000;
   mmkB = r.ru_maxrss;
   if (mtms > tls*1000) return TLE;
-  if (mmkB > mlkB) return MLE;
+  // if (mmkB > mlkB) return MLE;
   if (!WIFEXITED(st) || WEXITSTATUS(st) || WIFSIGNALED(st)) return RTE;
   return AC;
 }
@@ -110,6 +112,7 @@ static void judge(int attid) {
     att("privileged") || settings("autojudge") ? "judged": "waiting"
   );
   int verd = AC;
+  pair<int, int> solved_problems = {0, 0};
   
   // for each input file
   string dn = "problems/"+prob;
@@ -122,30 +125,44 @@ static void judge(int attid) {
     struct stat stt;
     stat(ifn.c_str(),&stt);
     if (!S_ISREG(stt.st_mode)) continue;
-    
+
+    solved_problems.second++;
+
     // run
     string ofn = path+"/output/"+fn;
-    verd = run(cmd+" < "+ifn+" > "+ofn,tls,mlkB,mtms,mmkB);
+    int tmp_verd = run(cmd+" < "+ifn+" > "+ofn,tls,mlkB,mtms,mmkB);
     Mtms = max(Mtms,mtms);
     MmkB = max(MmkB,mmkB);
-    if (verd != AC) break;
+    if(tmp_verd != AC){
+        verd = tmp_verd;
+        break;
+    }
     
     // diff
     string sfn = dn+"/output/"+fn;
     int status = system("diff -wB %s %s",ofn.c_str(),sfn.c_str());
-    if (WEXITSTATUS(status)) { verd = WA; break; }
-    status = system("diff %s %s",ofn.c_str(),sfn.c_str());
-    if (WEXITSTATUS(status)) { verd = PE; break; }
-    
+    if(WEXITSTATUS(status)){
+        verd = WA;
+        break;
+    }
+
+    solved_problems.first++;
+
     // remove correct output
     remove(ofn.c_str());
   }
   closedir(dir);
+  long long g = __gcd(solved_problems.first, solved_problems.second);
+  solved_problems.first /= g;
+  solved_problems.second /= g;
   
   // update attempt
   att["verdict"] = verdict_tos(verd);
   att["time"] = move(tostr(mtms));
   att["memory"] = move(tostr(mmkB));
+  att["solved_tests"] = move(tostr(solved_problems.first));
+  att["total_tests"] = move(tostr(solved_problems.second));
+
   attempts.update(attid,move(att));
 }
 
@@ -194,6 +211,16 @@ void push(int attid) {
     jqueue.push(attid);
     pthread_mutex_unlock(&judge_mutex);
   }
+}
+
+void push_problem(int probid) {
+  DB(attempts);
+  vector<int> atts;
+  attempts.retrieve([&](const Database::Document& doc) {
+    if (doc.second("problem") == probid) atts.push_back(doc.first);
+    return Database::null();
+  });
+  for (int id : atts) push(id);
 }
 
 } // namespace Judge

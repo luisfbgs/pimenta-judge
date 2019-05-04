@@ -4,7 +4,8 @@
     "document": {
       "name": "Team 1 Name",
       "password": "team1password",
-      "username": "team1username"
+      "username": "team1username",
+      "turma" : "Z"
     }
   }
 ]

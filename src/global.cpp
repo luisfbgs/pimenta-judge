@@ -143,6 +143,36 @@ void rerun_attempt(int id) {
   );
 }
 
+void rerun_contest(int id){
+  DB(contests);
+  JSON contest = contests.retrieve(id);
+  JSON probs;
+  map<int, bool> has_prob;
+  if(contest("qnt_provas")){
+    for(int prova = 1; prova <= int(contest("qnt_provas")); prova++){
+      probs = contest("prova", tostr(prova));
+      for(int k : probs.arr())
+        has_prob[k] = true;
+    }
+  }
+  else{
+    probs = contest("problems");
+    for(int k : probs.arr()) has_prob[k] = true;
+  }
+
+  DB(attempts);
+  JSON tmp = attempts.retrieve(), ans(vector<JSON>{}), aux;
+  for (auto& att : tmp.arr()) {
+
+    int pid = att["problem"];
+    if(!has_prob.count(pid)) continue;
+
+    int aid = att["id"];
+
+    Global::rerun_attempt(aid);
+  }
+}
+
 void shutdown() {
   quit = true;
 }
