@@ -1,4 +1,6 @@
 #include <queue>
+#include <vector>
+#include <string.h>
 
 #include <unistd.h>
 #include <dirent.h>
@@ -44,8 +46,8 @@ static char run(const string& cmd, int tls, int mlkB, int& mtms, int& mmkB) {
   // init time
   timeval start;
   gettimeofday(&start,nullptr);
-  // child
   pid_t pid = fork();
+  // child
   if (!pid) {
     tls++;
     rlimit r;
@@ -117,7 +119,30 @@ static void judge(int attid) {
   // for each input file
   string dn = "problems/"+prob;
   DIR* dir = opendir((dn+"/input").c_str());
+  
+  vector<dirent*> test_files;
   for (dirent* ent = readdir(dir); ent; ent = readdir(dir)) {
+    string fn = ent->d_name;
+    string ifn = dn+"/input/"+fn;
+    
+    // check if dirent is regular file
+    struct stat stt;
+    stat(ifn.c_str(),&stt);
+    if (!S_ISREG(stt.st_mode)) continue;
+    test_files.push_back(ent);
+  }
+
+  sort(test_files.begin(), test_files.end(), 
+    [] (dirent *a, dirent *b) -> bool {
+      int lena = strlen(a->d_name);
+      int lenb = strlen(b->d_name);
+      if (lena != lenb) {
+        return lena < lenb;
+      }
+      return strcmp(a->d_name, b->d_name) < 0;
+    });
+
+  for (dirent* ent : test_files) {
     string fn = ent->d_name;
     string ifn = dn+"/input/"+fn;
     
