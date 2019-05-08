@@ -186,7 +186,6 @@ JSON getcases(int user, int id){
   JSON ans;
   if(!user) return JSON::null();
   string tmp = User::get(user)["turma"];
-  if(tmp != "Z") return JSON::null();
 
   DB(attempts);
   DB(problems);

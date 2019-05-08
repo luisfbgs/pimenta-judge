@@ -303,7 +303,7 @@ function contest(id) {
     if (username != "") html +=
         "<a href=\"#\" onclick=\"contest_attempts("+id+")\">Attempts</a> "
     ;
-	if (username == "placar" || username == "judge")
+	if (isadmin())
     html +=
         "<a href=\"#\" onclick=\"contest_scoreboard("+id+")\">Scoreboard</a>"
 	html +=
@@ -368,7 +368,7 @@ function contest_attempts(id) {
 }
 
 function contest_scoreboard(id) {
-	if (username == "placar" || username == "judge"){
+	if (isadmin()){
 	  $.get("contest/scoreboard/"+id,null,function(resp) {
 		var msg = (
 		  resp.status == "frozen" ? " (frozen at "+resp.freeze+" minutes)" : (
@@ -550,14 +550,8 @@ function quick_attempt_cases(){
 }
 
 function attempt_cases(id) {
-  if (username == "") window.location = "/";
-  if (id == "") return;
   
   var func = function(resp) {
-    if(resp == null) return;
-    if(typeof resp != "object") return;
-    if(resp["problem"] == undefined) return;
-    if(resp["tests"] == undefined) return;
     var html =
       "<h2>Attempt "+resp.id+"</h2>"+
       "<table class=\"data\">"+
@@ -578,6 +572,9 @@ function attempt_cases(id) {
     ;
     var did = 0;
     for(var test in resp.tests){
+      if (typeof resp.tests[test].input !== 'string') resp.tests[test].input = resp.tests[test].input.toString();
+      if (typeof resp.tests[test].outrecieved !== 'string') resp.tests[test].outrecieved = resp.tests[test].outrecieved.toString();
+      if (typeof resp.tests[test].outexpected !== 'string') resp.tests[test].outexpected = resp.tests[test].outexpected.toString(); 
       did = 1;
       html+=
         "<table class=\"data\">"+
